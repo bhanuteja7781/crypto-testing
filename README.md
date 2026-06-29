@@ -32,7 +32,7 @@ The system splits security operations into an initial asymmetric challenge phase
 
 ```
 
-###2. Validation Pipeline Execution Order
+### 2. Validation Pipeline Execution Order
 
 Every incoming authenticated request passes through a linear, short-circuiting middleware stack on the server:
 
@@ -42,7 +42,7 @@ Replay Detection: Looks up the X-Signature header value inside an in-memory Set.
 
 Cryptographic HMAC Verification: Re-hashes the raw inbound payload string combined with the timestamp and nonce strings using a shared secret key. If it does not match X-Signature identically, it throws a 401 Unauthorized block.
 
-🗂️ Project Directory Structure
+### 🗂️ Project Directory Structure
 Plaintext
 ├── server.js            # Express application with security validation middleware
 ├── tests/
@@ -55,7 +55,7 @@ Node.js (v18 or higher recommended)
 
 npm
 
-Installation
+### Installation
 Clone or navigate into your project directory and install the necessary dependencies:
 
 Bash
