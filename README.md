@@ -1,85 +1,289 @@
 # Secure Transaction API & Automation Framework
 
-This project contains a local prototype of a secure, two-step challenge-response API built with **Node.js + Express** alongside a security verification suite built with **Playwright**. 
-
-The architecture simulates strict transaction protection mechanisms against payload tampering, clock skew exploits, and rapid-fire replay attacks.
+A local prototype of a secure transaction processing system built with **Node.js**, **Express**, and **Playwright**. The project demonstrates a two-step challenge-response authentication workflow designed to protect transaction APIs against payload tampering, replay attacks, and timestamp manipulation.
 
 ---
 
-## 🏗️ Architecture Design & Flow
+## Features
 
-The system splits security operations into an initial asymmetric challenge phase followed by a strictly validated transaction execution phase.
+* Two-step challenge-response transaction workflow
+* HMAC-SHA512 request signing
+* Timestamp validation to prevent clock-skew attacks
+* Replay attack detection using signature tracking
+* Playwright API automation tests
+* Lightweight Express-based mock secure gateway
 
-### 1. The Two-Step Lifecycle
+---
+
+## Architecture Overview
+
+The system separates transaction creation from transaction authorization.
+
+### Transaction Flow
 
 ```text
-[ Client (Playwright) ]                    [ Mock Secure Gateway ]
-         │                                            │
-         │ 1. POST /api/transactions (Base Data)     │
-         ├───────────────────────────────────────────>│ (Generates ID, Nonce,
-         │                                            │  & Authoritative Time)
-         │ 2. 211 Created + Challenge Headers         │
-         │<───────────────────────────────────────────┤
-         │                                            │
-         │ 3. Compute HMAC-SHA512 locally             │
-         │                                            │
-         │ 4. PUT /api/transactions/:id               │
-         │    (JSON Payload + Cryptographic Headers)  │
-         ├───────────────────────────────────────────>│ ──┐
-         │                                            │   │ 5. Strict Validation
-         │ 5. 200 OK (Finalized)                      │   │    Pipeline Checks
-         │<───────────────────────────────────────────┤ <─┘
-
+┌──────────────────────────────┐
+│      Playwright Client       │
+└──────────────┬───────────────┘
+               │
+               │ POST /api/transactions
+               ▼
+┌──────────────────────────────┐
+│     Secure Mock Gateway      │
+│  Generates:                  │
+│  • Transaction ID            │
+│  • Nonce                     │
+│  • Server Timestamp          │
+└──────────────┬───────────────┘
+               │
+               │ 211 Created
+               │ Challenge Headers
+               ▼
+┌──────────────────────────────┐
+│      Playwright Client       │
+│ Computes HMAC-SHA512         │
+└──────────────┬───────────────┘
+               │
+               │ PUT /api/transactions/:id
+               │ Signed Payload + Headers
+               ▼
+┌──────────────────────────────┐
+│     Secure Mock Gateway      │
+│ Performs Validation          │
+│ • Timestamp Check            │
+│ • Replay Detection           │
+│ • HMAC Verification          │
+└──────────────┬───────────────┘
+               │
+               ▼
+          200 OK
 ```
 
-### 2. Validation Pipeline Execution Order
+---
 
-Every incoming authenticated request passes through a linear, short-circuiting middleware stack on the server:
+## Validation Pipeline
 
-Timestamp Validation: Verifies |Server Time - Client Timestamp| <= 5 minutes. Drops expired requests immediately before running heavier processing.
+Every authenticated request passes through the following middleware sequence:
 
-Replay Detection: Looks up the X-Signature header value inside an in-memory Set. If found, a duplicate request is flagged, halting execution with a 403 Forbidden response.
+### 1. Timestamp Validation
 
-Cryptographic HMAC Verification: Re-hashes the raw inbound payload string combined with the timestamp and nonce strings using a shared secret key. If it does not match X-Signature identically, it throws a 401 Unauthorized block.
+Checks that the client's timestamp is within the permitted time window.
 
-### 🗂️ Project Directory Structure
-Plaintext
-├── server.js            # Express application with security validation middleware
-├── tests/
-│   └── api.spec.js      # Playwright API test automation suite (Happy path + Replay simulation)
-├── package.json         # Project manifests and dependencies
-└── README.md            # Documentation
-🛠️ Getting Started
-Prerequisites
-Node.js (v18 or higher recommended)
+```
+| Server Time − Client Time | ≤ 5 minutes
+```
 
-npm
+Expired requests are rejected immediately.
 
-### Installation
-Clone or navigate into your project directory and install the necessary dependencies:
+---
 
-Bash
-# Install core express dependencies and Playwright test runner
+### 2. Replay Detection
+
+The server maintains an in-memory collection of previously used request signatures.
+
+If the incoming signature already exists:
+
+* Request is rejected
+* HTTP **403 Forbidden** is returned
+
+---
+
+### 3. HMAC Verification
+
+The server recalculates the HMAC-SHA512 signature using:
+
+* Raw request body
+* Timestamp
+* Nonce
+* Shared secret
+
+If the computed signature differs from the supplied signature, the request is rejected with:
+
+```
+401 Unauthorized
+```
+
+---
+
+## Project Structure
+
+```text
+secure-transaction-api/
+│
+├── server.js
+├── package.json
+├── README.md
+│
+└── tests/
+    └── api.spec.js
+```
+
+### File Descriptions
+
+| File              | Purpose                                            |
+| ----------------- | -------------------------------------------------- |
+| server.js         | Express server with security validation middleware |
+| tests/api.spec.js | Playwright automation tests                        |
+| package.json      | Project dependencies                               |
+| README.md         | Project documentation                              |
+
+---
+
+## Prerequisites
+
+* Node.js 18 or later
+* npm
+
+---
+
+## Installation
+
+Clone the repository and install the required packages.
+
+```bash
+npm install
+```
+
+Or install dependencies manually:
+
+```bash
 npm install express @playwright/test
-🚀 Execution Guide
-To thoroughly test the security mechanisms, run the backend mock gateway and the validation tests in separate terminal instances.
+```
 
-Step 1: Start the Secure Mock Server
-Bash
+---
+
+## Running the Project
+
+### Step 1 — Start the Server
+
+```bash
 node server.js
-The server will boot and listen natively on http://localhost:3000.
+```
 
-Step 2: Execute Playwright Security Automation Tests
-In a second terminal window, run the test suites:
+The server starts at:
 
-Bash
-# Run tests and print results directly to the console
+```
+http://localhost:3000
+```
+
+---
+
+### Step 2 — Execute Playwright Tests
+
+Open another terminal and run:
+
+```bash
 npx playwright test --reporter=line
-🧪 Security Scenario Validation Coverage
-The Playwright automated tests validate specific architectural security parameters:
+```
 
-Challenge Acceptance: Verifies that an unauthenticated transaction initiation request properly returns authoritative nonces, tracking IDs, and server times within response headers.
+---
 
-Cryptographic Signing (Happy Path): Validates that an authorized client constructing an accurate HMAC-SHA512 configuration updates transaction states safely (200 OK).
+## Test Coverage
 
-Replay Attack Defenses (Within 150ms): Simulates an active attacker intercepting the fully signed network transaction packet and trying to re-execute it immediately. Asserts that the server blocks the subsequent action with a 403 Forbidden error and keeps data stores pristine.
+The automation suite validates the following security scenarios.
+
+### Challenge Generation
+
+* Creates a new transaction
+* Returns:
+
+  * Transaction ID
+  * Nonce
+  * Server Timestamp
+
+---
+
+### Successful Signed Transaction
+
+Verifies that a correctly signed request is accepted.
+
+Expected response:
+
+```
+200 OK
+```
+
+---
+
+### Replay Attack Protection
+
+Simulates sending the exact same signed request twice.
+
+Expected responses:
+
+First request:
+
+```
+200 OK
+```
+
+Second request:
+
+```
+403 Forbidden
+```
+
+---
+
+### Payload Integrity
+
+Confirms that modifying the request payload invalidates the HMAC signature.
+
+Expected response:
+
+```
+401 Unauthorized
+```
+
+---
+
+### Timestamp Validation
+
+Verifies that stale or future timestamps outside the allowed window are rejected.
+
+Expected response:
+
+```
+401 Unauthorized
+```
+
+---
+
+## Technologies Used
+
+* Node.js
+* Express.js
+* Playwright
+* JavaScript
+* Crypto (HMAC-SHA512)
+
+---
+
+## Security Features
+
+* Challenge-response authentication
+* HMAC-SHA512 request signing
+* Nonce-based request validation
+* Timestamp verification
+* Replay attack prevention
+* Middleware-based security pipeline
+
+---
+
+## Future Improvements
+
+* Redis-backed replay protection
+* Persistent transaction storage
+* JWT-based authentication
+* Request rate limiting
+* HTTPS/TLS support
+* Docker containerization
+* CI/CD integration with GitHub Actions
+
+---
+
+## License
+
+This project is intended for educational and demonstration purposes.
+
+---
