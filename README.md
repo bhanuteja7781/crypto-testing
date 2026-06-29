@@ -12,7 +12,7 @@ The system splits security operations into an initial asymmetric challenge phase
 
 ### 1. The Two-Step Lifecycle
 
-```text
+
 [ Client (Playwright) ]                    [ Mock Secure Gateway ]
          │                                            │
          │ 1. POST /api/transactions (Base Data)     │
@@ -29,6 +29,8 @@ The system splits security operations into an initial asymmetric challenge phase
          │                                            │   │ 5. Strict Validation
          │ 5. 200 OK (Finalized)                      │   │    Pipeline Checks
          │<───────────────────────────────────────────┤ <─┘
+
+
 
 2. Validation Pipeline Execution Order
 Every incoming authenticated request passes through a linear, short-circuiting middleware stack on the server:
