@@ -1,0 +1,26 @@
+{
+  "name": "crypto-replay-testing",
+  "version": "1.0.0",
+  "description": "Cryptographic Replay Testing using Node.js, Express and Playwright",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "test": "playwright test",
+    "test:headed": "playwright test --headed"
+  },
+  "keywords": [
+    "playwright",
+    "express",
+    "security",
+    "hmac",
+    "replay-attack"
+  ],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "express": "^4.21.2"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.54.2"
+  }
+}
